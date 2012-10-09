@@ -1,7 +1,7 @@
-var https = require('https');
+var http = require('http');
 var util = require('util');
 
-var srv = https.createServer(function(req, res) {
+var srv = http.createServer(function(req, res) {
 	req.on('end', function() {
 		res.writeHead(200);
 		res.end();
