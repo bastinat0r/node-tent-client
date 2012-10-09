@@ -8,4 +8,7 @@ var srv = https.createServer(function(req, res) {
 		util.puts(req.url);
 	});
 });
+srv.on('error', function(error) {
+	util.puts(error);
+});
 srv.listen(8080);
