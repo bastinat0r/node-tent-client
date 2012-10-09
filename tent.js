@@ -26,16 +26,13 @@ function printUrl(url) {
 	if(debug)	util.puts('URL:\n'+url);
 }
 
-function registerApp(credentials, appInfo) {
-	var opts = {
-		host : credentials.host,
-		path : credentials.path,
-		method : 'HEAD',
-		headers : {
-			"Accept" : "application/vnd.tent.v0+json",
-			"Content-Length" : "0",
-		}
-	}
+function registerApp(entityUrl, appInfo) {
+	var opts = url.parse(entityUrl);
+	opts.method = 'HEAD';
+	opts.headers = {
+		"Accept" : "application/vnd.tent.v0+json",
+		"Content-Length" : "0",
+	};
 	var req = https.request(opts, function(res) {
 		res.on('end', function() {
 			printHeader(res.headers);
@@ -50,7 +47,7 @@ function registerApp(credentials, appInfo) {
 					printBody(data);
 					var profile = JSON.parse(data);
 					var core = profile["https://tent.io/types/info/core/v0.1.0"];
-					sendAuthenticationRequest(core, appInfo);
+					generateAuthenticationUrl(core, appInfo);
 				});
 			});
 		});
@@ -59,7 +56,7 @@ function registerApp(credentials, appInfo) {
 	req.end();
 }
 
-function sendAuthenticationRequest(profileCore, appInfo) {
+function generateAuthenticationUrl(profileCore, appInfo) {
 	var contentLength = JSON.stringify(appInfo).length;
 	var apiRootUrl = profileCore.servers[0];
 	var opts = url.parse(apiRootUrl);
@@ -72,12 +69,29 @@ function sendAuthenticationRequest(profileCore, appInfo) {
 	}
 	printOptions(opts);
 	var req = https.request(opts, function(res) {
-		res.on('data', printBody);
+	var data = "";
+		res.on('data', function(chunk) {
+			data = data + chunk;
+		});
 		res.on('end', function() {
 			printHeader(res.headers);
+			printBody(data);
+			var components = JSON.parse(data);
+			var scope = "";
+			for (i in components.scope) {
+				scope = i + ","
+			};
+			scope.replace(/,$/,'');	// strip the last ',' away
+			if(debug) util.puts("Scopestring:\n" + scope);
+			var oauthUrl = 	apiRootUrl + 
+				'/oauth/authorize?client_id=' + components.id +
+				'&redirect_uri=' + components.redirect_uris[0] +
+			util.puts('OAUTH-URL:\n' + oauthUrl);
+			// complete oauth	
 		});
 	});
 	req.on('error', printErrorMessage);
 	req.end(JSON.stringify(appInfo));
+
 }
 
