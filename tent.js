@@ -3,6 +3,7 @@ var http = require('http');
 var util = require('util');
 var url = require('url');
 var querystring = require('querystring');
+var crypto = require('crypto');
 
 exports.registerApp = registerApp;
 
@@ -46,6 +47,7 @@ function registerApp(entityUrl, appInfo) {
 			printUrl(profileUrl);
 			https.get(url.parse(profileUrl), function(res) {
 				res.on('data', function(data) {
+					printHeader(res.headers);
 					printBody(data);
 					var profile = JSON.parse(data);
 					var core = profile["https://tent.io/types/info/core/v0.1.0"];
@@ -70,6 +72,7 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 		"Content-Type" : "application/vnd.tent.v0+json",
 		"Content-Length" : contentLength.toString()
 	}
+	var components;
 	printOptions(opts);
 	var req = https.request(opts, function(res) {
 	var data = "";
@@ -79,7 +82,7 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 		res.on('end', function() {
 			printHeader(res.headers);
 			printBody(data);
-			var components = JSON.parse(data);
+			components = JSON.parse(data);
 			var scope = "";
 			for (i in components.scopes) {
 				scope = scope + i + ","
@@ -90,7 +93,7 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 				'/oauth/authorize?client_id=' + components.id +
 				'&redirect_uri=' + components.redirect_uris[0] +
 				'&scope=' + scope;
-			util.puts('OAUTH-URL:\n' + oauthUrl);
+			util.puts('OAUTH-URL, paste it in your favorite Webbrowser:\n' + oauthUrl);
 		});
 	});
 	req.on('error', printErrorMessage);
@@ -104,10 +107,36 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 			var query = url.parse(req.url).query;
 			var param = querystring.parse(query);
 			if(param.code) {
-				util.puts(param.code);
+				util.puts('Got code: ' + param.code);
+				components.code = param.code;
+				finishRegistration(opts, components);
+				this.close();
 			}
 		});
 	});
 	srv.listen('8080', 'localhost');
 }
 
+function finishRegistration(opts, oauthComponents) {
+	var hmac = crypto.createHmac('sha256', oauthComponents.mac_key);
+	var requestBody = JSON.stringify({
+		code : oauthComponents.code,
+		token_type : "mac"
+	});
+	hmac.update(requestBody);
+	opts.path = opts.path + '/' + oauthComponents.id + '/authorizations';
+	opts.headers = {
+		'Content-Type' : 'application/vnd.tent.v0+json',
+		'Accept' : 'application/vnd.tent.v0+json',
+		'Content-Length' : requestBody.length,
+		'Authorization' : 'MAC id=' + oauthComponents.mac_key_id 
+				+ ', ts="' + (new Date).getTime() 
+				+ '", nonce="' + crypto.randomBytes(5) 
+				+ '", mac="' + hmac.digest('base64') + '"'
+	}
+	printOptions(opts);
+	var req = https.request(opts, function(res) {
+		res.on('data', printBody);
+	});
+	req.end(requestBody);
+}
