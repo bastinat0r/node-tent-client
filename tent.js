@@ -78,14 +78,15 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 			printBody(data);
 			var components = JSON.parse(data);
 			var scope = "";
-			for (i in components.scope) {
-				scope = i + ","
+			for (i in components.scopes) {
+				scope = scope + i + ","
 			};
 			scope.replace(/,$/,'');	// strip the last ',' away
 			if(debug) util.puts("Scopestring:\n" + scope);
 			var oauthUrl = 	apiRootUrl + 
 				'/oauth/authorize?client_id=' + components.id +
 				'&redirect_uri=' + components.redirect_uris[0] +
+				'&scope=' + scope;
 			util.puts('OAUTH-URL:\n' + oauthUrl);
 			// complete oauth	
 		});
