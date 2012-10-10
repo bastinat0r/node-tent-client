@@ -1,6 +1,8 @@
 var https = require('https');
+var http = require('http');
 var util = require('util');
 var url = require('url');
+var querystring = require('querystring');
 
 exports.registerApp = registerApp;
 
@@ -57,6 +59,7 @@ function registerApp(entityUrl, appInfo) {
 }
 
 function generateAuthenticationUrl(profileCore, appInfo) {
+/* todo: generate state-string */
 	var contentLength = JSON.stringify(appInfo).length;
 	var apiRootUrl = profileCore.servers[0];
 	var opts = url.parse(apiRootUrl);
@@ -88,11 +91,23 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 				'&redirect_uri=' + components.redirect_uris[0] +
 				'&scope=' + scope;
 			util.puts('OAUTH-URL:\n' + oauthUrl);
-			// complete oauth	
 		});
 	});
 	req.on('error', printErrorMessage);
 	req.end(JSON.stringify(appInfo));
-
+	var srv = http.createServer(function(req, res) {
+		req.on('end', function() {
+			res.writeHead(200);
+			res.end('OK');
+			printHeader(req.headers);
+			printUrl(req.url);
+			var query = url.parse(req.url).query;
+			var param = querystring.parse(query);
+			if(param.code) {
+				util.puts(param.code);
+			}
+		});
+	});
+	srv.listen('8080', 'localhost');
 }
 
