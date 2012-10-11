@@ -124,6 +124,13 @@ function finishRegistration(opts, oauthComponents) {
 		'code' : oauthComponents.code,
 		'token_type' : "mac"
 	});
+	var nonce = "";
+	while (nonce.length < 5) {
+		var c = crypto.randomBytes(1);
+		if(/[a-z0-9]/.test(c))
+			nonce = nonce + c;
+	}
+
 	hmac.update(requestBody);
 	opts.path = opts.path + '/' + oauthComponents.id + '/authorizations';
 	opts.headers = {
@@ -132,7 +139,7 @@ function finishRegistration(opts, oauthComponents) {
 		'Content-Length' : requestBody.length,
 		'Authorization' : 'MAC id=' + oauthComponents.mac_key_id 
 				+ ', ts="' + (new Date).getTime() 
-				+ '", nonce="' + crypto.randomBytes(5) 
+				+ '", nonce="' + nonce
 				+ '", mac="' + hmac.digest('base64') + '"'
 	}
 	printOptions(opts);
