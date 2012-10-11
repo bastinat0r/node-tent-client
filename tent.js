@@ -102,15 +102,16 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 		req.on('end', function() {
 			res.writeHead(200);
 			res.end('OK');
-			printHeader(req.headers);
-			printUrl(req.url);
 			var query = url.parse(req.url).query;
 			var param = querystring.parse(query);
+			
 			if(param.code) {
+				printHeader(req.headers);
+				printUrl(req.url);
 				util.puts('Got code: ' + param.code);
 				components.code = param.code;
 				finishRegistration(opts, components);
-				this.close();
+				srv.close();
 			}
 		});
 	});
@@ -120,8 +121,8 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 function finishRegistration(opts, oauthComponents) {
 	var hmac = crypto.createHmac('sha256', oauthComponents.mac_key);
 	var requestBody = JSON.stringify({
-		code : oauthComponents.code,
-		token_type : "mac"
+		'code' : oauthComponents.code,
+		'token_type' : "mac"
 	});
 	hmac.update(requestBody);
 	opts.path = opts.path + '/' + oauthComponents.id + '/authorizations';
@@ -135,8 +136,13 @@ function finishRegistration(opts, oauthComponents) {
 				+ '", mac="' + hmac.digest('base64') + '"'
 	}
 	printOptions(opts);
+	util.puts("Autentication Request Body:\n" + requestBody);
 	var req = https.request(opts, function(res) {
-		res.on('data', printBody);
+		res.on('data', function(data) {
+			printHeader(res.headers);
+			printBody(data);
+		});
+		res.on('error', printErrorMessage);
 	});
 	req.end(requestBody);
 }
