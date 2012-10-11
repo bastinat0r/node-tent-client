@@ -119,26 +119,39 @@ function generateAuthenticationUrl(profileCore, appInfo) {
 }
 
 function finishRegistration(opts, oauthComponents) {
-	var hmac = crypto.createHmac('sha256', oauthComponents.mac_key);
 	var requestBody = JSON.stringify({
 		'code' : oauthComponents.code,
 		'token_type' : "mac"
 	});
+	
+	opts.path = opts.path + '/' + oauthComponents.id + '/authorizations';
 	var nonce = "";
 	while (nonce.length < 5) {
 		var c = crypto.randomBytes(1);
 		if(/[a-z0-9]/.test(c))
 			nonce = nonce + c;
 	}
+	var timeStamp = (new Date).getTime(); 
+	var normalizedRequestString = "" 
+			+ timeStamp + '\n'
+			+ nonce + '\n'
+			+ 'POST' + '\n'
+			+ opts.path + '\n'
+			+ opts.host + '\n'
+			+ '443' + '\n'
+			+ '\n' ;
 
-	hmac.update(requestBody);
-	opts.path = opts.path + '/' + oauthComponents.id + '/authorizations';
+	util.puts("normalizedRequestString:\n" + normalizedRequestString);
+	util.puts('Key: \n' + oauthComponents.mac_key);
+	
+	var hmac = crypto.createHmac('sha256', oauthComponents.mac_key);
+	hmac.update(normalizedRequestString);
 	opts.headers = {
 		'Content-Type' : 'application/vnd.tent.v0+json',
 		'Accept' : 'application/vnd.tent.v0+json',
 		'Content-Length' : requestBody.length,
 		'Authorization' : 'MAC id=' + oauthComponents.mac_key_id 
-				+ ', ts="' + (new Date).getTime() 
+				+ ', ts="' + timeStamp
 				+ '", nonce="' + nonce
 				+ '", mac="' + hmac.digest('base64') + '"'
 	}
