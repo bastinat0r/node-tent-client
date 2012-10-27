@@ -131,7 +131,7 @@ function finishRegistration(opts, oauthComponents) {
 		if(/[a-z0-9]/.test(c))
 			nonce = nonce + c;
 	}
-	var timeStamp = (new Date).getTime(); 
+	var timeStamp = parseInt((new Date()).getTime() / 1000, 10); 
 	var normalizedRequestString = "" 
 			+ timeStamp + '\n'
 			+ nonce + '\n'
@@ -150,8 +150,8 @@ function finishRegistration(opts, oauthComponents) {
 		'Content-Type' : 'application/vnd.tent.v0+json',
 		'Accept' : 'application/vnd.tent.v0+json',
 		'Content-Length' : requestBody.length,
-		'Authorization' : 'MAC id=' + oauthComponents.mac_key_id 
-				+ ', ts="' + timeStamp
+		'Authorization' : 'MAC id="' + oauthComponents.mac_key_id 
+				+ '", ts="' + timeStamp
 				+ '", nonce="' + nonce
 				+ '", mac="' + hmac.digest('base64') + '"'
 	}
